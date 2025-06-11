@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import time
 import folium
 from streamlit_folium import st_folium
+from streamlit_autorefresh import st_autorefresh
 from PIL import Image
 import io
 import base64
@@ -21,7 +22,7 @@ st.set_page_config(
 )
 
 # URL del API
-API_URL = "https://backend-3q27.onrender.com"
+API_URL = "https://backend-3q27.onrender.com/api/raspberry-data"
 
 # CSS personalizado
 st.markdown("""
@@ -73,7 +74,7 @@ def get_raspberry_locations():
         st.error(f"Error conectando con API: {e}")
     return []
 
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=10)
 def get_raspberry_images(raspberry_id, limit=20):
     try:
         response = requests.get(f"{API_URL}/api/raspberry-images/{raspberry_id}?limit={limit}", timeout=5)
@@ -97,14 +98,8 @@ def get_statistics():
 st.sidebar.header("🎛️ Panel de Control")
 auto_refresh = st.sidebar.checkbox("🔄 Auto-refresh (10s)", value=True)
 show_images = st.sidebar.checkbox("🖼️ Mostrar imágenes", value=True)
-map_style = st.sidebar.selectbox("🗺️ Estilo de mapa", ["OpenStreetMap", "CartoDB positron", "CartoDB dark_matter"])
+map_style = "OpenStreetMap"
 
-# Mapeo de estilos
-style_mapping = {
-    "OpenStreetMap": "OpenStreetMap",
-    "CartoDB positron": "CartoDB positron", 
-    "CartoDB dark_matter": "CartoDB dark_matter"
-}
 
 # Estado del session_state para manejar selección
 if 'selected_raspberry' not in st.session_state:
@@ -257,7 +252,7 @@ def main_dashboard():
         m = folium.Map(
             location=[center_lat, center_lon],
             zoom_start=13,
-            tiles=style_mapping[map_style]
+            tiles=map_style
         )
         
         # Agregar marcadores
@@ -431,26 +426,10 @@ def main_dashboard():
 
 # Loop principal con auto-refresh
 if auto_refresh:
-    # Placeholder para el contenido
-    placeholder = st.empty()
-    
-    # Contador de refresh
-    refresh_counter = st.sidebar.empty()
-    counter = 0
-    
-    while True:
-        with placeholder.container():
-            main_dashboard()
-        
-        counter += 1
-        refresh_counter.info(f"🔄 Actualizaciones: {counter}")
-        
-        # Esperar 10 segundos
-        time.sleep(10)
-        
-        # Limpiar cache cada 10 actualizaciones
-        if counter % 10 == 0:
-            st.cache_data.clear()
+
+    st_autorefresh(interval=10_000, key="refresh_key")
+    st.sidebar.info("🔄 Auto-refresh activado (cada 10s)")
+
 else:
     main_dashboard()
     st.sidebar.info("🔄 Auto-refresh desactivado. Recarga la página manualmente.")
