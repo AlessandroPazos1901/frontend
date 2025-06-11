@@ -297,7 +297,7 @@ def main_dashboard():
                         with cols[col_idx]:
                             try:
                                 # Mostrar imagen
-                                image_url = f"{img_data['image_path']}"
+                                image_url = f"{img_data['image_url']}"
                                 
                                 # Información de la imagen
                                 st.markdown(f"""
