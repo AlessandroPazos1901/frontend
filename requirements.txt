@@ -1,3 +1,4 @@
+cloudinary==1.36.0
 streamlit
 streamlit-autorefresh
 requests
