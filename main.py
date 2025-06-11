@@ -21,7 +21,7 @@ st.set_page_config(
 )
 
 # URL del API
-API_URL = st.secrets.get("API_URL", "https://backend-3q27.onrender.com")
+API_URL = "https://backend-3q27.onrender.com"
 
 # CSS personalizado
 st.markdown("""
