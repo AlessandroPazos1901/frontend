@@ -5,13 +5,12 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-import time
 import folium
 from streamlit_folium import st_folium
-from streamlit_autorefresh import st_autorefresh
 from PIL import Image
 import io
 import base64
+from streamlit_autorefresh import st_autorefresh
 
 # Configuración de página
 st.set_page_config(
@@ -56,6 +55,17 @@ st.markdown("""
         border-radius: 15px;
         font-size: 0.8rem;
     }
+    .refresh-indicator {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 12px;
+        z-index: 1000;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -74,7 +84,7 @@ def get_raspberry_locations():
         st.error(f"Error conectando con API: {e}")
     return []
 
-@st.cache_data(ttl=10)
+@st.cache_data(ttl=5)
 def get_raspberry_images(raspberry_id, limit=20):
     try:
         response = requests.get(f"{API_URL}/api/raspberry-images/{raspberry_id}?limit={limit}", timeout=5)
@@ -96,106 +106,51 @@ def get_statistics():
 
 # Sidebar para controles
 st.sidebar.header("🎛️ Panel de Control")
-auto_refresh = st.sidebar.checkbox("🔄 Auto-refresh (10s)", value=True)
-show_images = st.sidebar.checkbox("🖼️ Mostrar imágenes", value=True)
-map_style = "OpenStreetMap"
 
+# Control de auto-refresh
+auto_refresh_enabled = st.sidebar.checkbox("🔄 Auto-refresh", value=True)
+refresh_interval = st.sidebar.selectbox(
+    "⏱️ Intervalo de actualización", 
+    options=[5, 10, 15, 30, 60], 
+    index=1,  # 10 segundos por defecto
+    format_func=lambda x: f"{x} segundos"
+)
+
+show_images = st.sidebar.checkbox("🖼️ Mostrar imágenes", value=True)
+map_style = st.sidebar.selectbox("🗺️ Estilo de mapa", ["OpenStreetMap", "CartoDB positron", "CartoDB dark_matter"])
+
+# Auto-refresh usando st_autorefresh
+if auto_refresh_enabled:
+    # Configurar auto-refresh
+    count = st_autorefresh(interval=refresh_interval * 1000, key="data_refresh")
+    
+    # Mostrar indicador de refresh
+    st.sidebar.success(f"🔄 Actualización #{count}")
+    st.sidebar.info(f"⏰ Cada {refresh_interval} segundos")
+    
+    # Limpiar cache periódicamente
+    if count % 10 == 0 and count > 0:
+        st.cache_data.clear()
+        st.sidebar.info("🧹 Cache limpiado")
+else:
+    st.sidebar.info("🔄 Auto-refresh desactivado")
 
 # Estado del session_state para manejar selección
 if 'selected_raspberry' not in st.session_state:
     st.session_state.selected_raspberry = None
 
-# Función principal
+# Función principal del dashboard
 def main_dashboard():
     # Obtener datos
     locations = get_raspberry_locations()
-#     [
-#     {
-#       "raspberry_id": 1,
-#       "name": "Raspberry-Miraflores",
-#       "location": "Miraflores, Lima",
-#       "latitude": -12.1210,
-#       "longitude": -77.0300,
-#       "last_seen": "2025-06-07T15:12:30",
-#       "status": "online",
-#       "total_detections": 0,
-#       "last_detection": "2025-06-07T14:58:00"
-#     },
-#     {
-#       "raspberry_id": 2,
-#       "name": "Raspberry-San Isidro",
-#       "location": "San Isidro, Lima",
-#       "latitude": -12.0970,
-#       "longitude": -77.0370,
-#       "last_seen": "2025-06-07T14:50:15",
-#       "status": "online",
-#       "total_detections": 2,
-#       "last_detection": "2025-06-07T14:40:00"
-#     },
-#     {
-#       "raspberry_id": 3,
-#       "name": "Raspberry-Surco",
-#       "location": "Santiago de Surco, Lima",
-#       "latitude": -12.1580,
-#       "longitude": -76.9820,
-#       "last_seen": "2025-06-06T22:10:00",
-#       "status": "offline",
-#       "total_detections": 0,
-#       "last_detection": "2025-06-06T20:55:00"
-#     },
-#     {
-#       "raspberry_id": 4,
-#       "name": "Raspberry-La Molina",
-#       "location": "La Molina, Lima",
-#       "latitude": -12.0875,
-#       "longitude": -76.9710,
-#       "last_seen": "2025-06-07T13:45:22",
-#       "status": "online",
-#       "total_detections": 1,
-#       "last_detection": "2025-06-07T13:30:00"
-#     },
-#     {
-#       "raspberry_id": 5,
-#       "name": "Raspberry-San Borja",
-#       "location": "San Borja, Lima",
-#       "latitude": -12.0950,
-#       "longitude": -76.9940,
-#       "last_seen": "2025-06-06T19:30:00",
-#       "status": "offline",
-#       "total_detections": 0,
-#       "last_detection": "2025-06-06T18:45:00"
-#     },
-#     {
-#       "raspberry_id": 6,
-#       "name": "Raspberry-Barranco",
-#       "location": "Barranco, Lima",
-#       "latitude": -12.1470,
-#       "longitude": -77.0200,
-#       "last_seen": "2025-06-07T12:10:00",
-#       "status": "online",
-#       "total_detections": 22,
-#       "last_detection": "2025-06-07T12:05:00"
-#     }
-#   ]
+    
+    # Alertas de detección
     for r in locations:
-        if r['total_detections']>0:
-            st.error(f"ALERTA!!, AEDES DETECTADO EN {r['location']}", icon="🚨")
+        if r['total_detections'] > 0:
+            st.error(f"ALERTA!! AEDES DETECTADO EN {r['location']}", icon="🚨")
 
-    stats =get_statistics()
-#     {
-#   "total_detections": 97,  # Suma: 20 + 18 + 12 + 16 + 9 + 22
-#   "active_raspberries": 6,  # Todos han generado al menos una detección
-#   "avg_temperature": 26.7,  # Promedio de las temperaturas registradas (ficticio)
-#   "avg_humidity": 66.4,     # Promedio de las humedades registradas (ficticio)
-#   "detections_by_pi": {
-#     1: 20,
-#     2: 18,
-#     3: 12,
-#     4: 16,
-#     5: 9,
-#     6: 22
-#   }
-# }
+    stats = get_statistics()
+
     if not locations:
         st.error("❌ No se pueden cargar los datos. Verifica que el servidor FastAPI esté ejecutándose.")
         st.info("💡 Ejecuta: `python api_server.py` en otra terminal")
@@ -260,7 +215,7 @@ def main_dashboard():
             # Color del marcador según estado
             if row['total_detections'] > 0:
                 color = 'black' 
-            elif row['status']== 'online':
+            elif row['status'] == 'online':
                 color = 'green' 
             else:
                 color = 'red' 
@@ -331,36 +286,7 @@ def main_dashboard():
                 st.subheader("📸 Imágenes Recientes")
                 
                 images = get_raspberry_images(st.session_state.selected_raspberry, 3)
-                # [
-                #         {
-                #         "id": 451,
-                #         "timestamp": "2025-06-07T14:40:00",
-                #         "detection_count": 2,
-                #         "confidence": 0.92,
-                #         "image_path": "D:/Universidad/Tesis/AI_experiments/h177_7.jpg",
-                #         "temperature": 26.7,
-                #         "humidity": 64.2
-                #         },
-                #         {
-                #         "id": 450,
-                #         "timestamp": "2025-06-07T14:30:00",
-                #         "detection_count": 5,
-                #         "confidence": 0.85,
-                #         "image_path": "D:/Universidad/Tesis/AI_experiments/h178_1.jpg",
-                #         "temperature": 26.5,
-                #         "humidity": 63.9
-                #         },
-                #         {
-                #         "id": 449,
-                #         "timestamp": "2025-06-07T14:20:00",
-                #         "detection_count": 13,
-                #         "confidence": 0.89,
-                #         "image_path": "D:/Universidad/Tesis/AI_experiments/h22.jpg",
-                #         "temperature": 26.6,
-                #         "humidity": 64.0
-                #         }
-                #     ]
-                
+            
                 if images:
                     # Crear grid de imágenes
                     cols = st.columns(3)
@@ -385,8 +311,6 @@ def main_dashboard():
                                 
                                 # Intentar cargar y mostrar la imagen
                                 try:
-                             
-                                    #st.image(image_url, caption=f"Detección {img_data['timestamp'][:10]}", use_container_width=True)
                                     response = requests.get(image_url, timeout=5)
                                     if response.status_code == 200:
                                         image = Image.open(io.BytesIO(response.content))
@@ -419,17 +343,23 @@ def main_dashboard():
             y='total_detections',
             color='status',
             title="Detecciones por Raspberry Pi",
-            color_discrete_map={'active': '#28a745', 'inactive': '#dc3545'}
+            color_discrete_map={'online': '#28a745', 'offline': '#dc3545'}
         )
         fig.update_layout(xaxis_tickangle=-45)
         st.plotly_chart(fig, use_container_width=True)
 
-# Loop principal con auto-refresh
-if auto_refresh:
+# Ejecutar dashboard principal
+main_dashboard()
 
-    st_autorefresh(interval=10_000, key="refresh_key")
-    st.sidebar.info("🔄 Auto-refresh activado (cada 10s)")
+# Información adicional
+st.sidebar.markdown("---")
+st.sidebar.info("""
+**ℹ️ Información:**
+- Los datos se actualizan automáticamente
+- Haz clic en los marcadores del mapa para ver detalles
+- Las alertas aparecen cuando hay detecciones
+""")
 
-else:
-    main_dashboard()
-    st.sidebar.info("🔄 Auto-refresh desactivado. Recarga la página manualmente.")
+# Mostrar tiempo de última actualización
+if auto_refresh_enabled:
+    st.sidebar.caption(f"⏰ Última actualización: {datetime.now().strftime('%H:%M:%S')}")
