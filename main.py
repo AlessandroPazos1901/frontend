@@ -188,7 +188,7 @@ def main_dashboard():
     if locations:
         # Alertas de detección
         for r in locations:
-            if r['total_detections'] & r['total_detections']> 0:
+            if r['total_detections'] and r['total_detections']> 0:
                 st.error(f"ALERTA!! AEDES DETECTADO EN {r['location']}", icon="🚨")
                 
         df_locations = pd.DataFrame(locations)
