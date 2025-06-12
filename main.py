@@ -207,13 +207,15 @@ def main_dashboard():
         # Agregar marcadores
         for _, row in df_locations.iterrows():
             # Color del marcador según estado
-            if row['total_detections'] > 0:
+            if row['total_detections'] and row['total_detections']> 0:
                 color = 'black' 
             elif row['status'] == 'online':
                 color = 'green' 
             else:
                 color = 'red' 
-            
+
+            if not row['total_detections']:
+                row['total_detections'] = 0
             # Información del popup
             popup_html = f"""
             <div style="width:200px">
