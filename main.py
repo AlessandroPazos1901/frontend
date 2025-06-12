@@ -314,7 +314,7 @@ def main_dashboard():
                                     response = requests.get(image_url, timeout=5)
                                     if response.status_code == 200:
                                         image = Image.open(io.BytesIO(response.content))
-                                        st.image(image, caption=f"Detección {img_data['timestamp'][:10]}", use_column_width=True)
+                                        st.image(image, caption=f"Detección {img_data['timestamp'][:10]}", use_container_width=True)
                                     else:
                                         st.error(f"No se pudo cargar la imagen")
                                 except Exception as e:
