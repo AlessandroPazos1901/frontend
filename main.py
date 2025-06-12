@@ -21,7 +21,7 @@ st.set_page_config(
 )
 
 # URL del API
-# API_URL = "https://backend-3q27.onrender.com"
+API_URL = "https://backend-3q27.onrender.com"
 
 # CSS personalizado
 st.markdown("""
@@ -143,18 +143,7 @@ if 'selected_raspberry' not in st.session_state:
 def main_dashboard():
     # Obtener datos
     locations = get_raspberry_locations()
-    
-    # Alertas de detección
-    for r in locations:
-        if r['total_detections'] > 0:
-            st.error(f"ALERTA!! AEDES DETECTADO EN {r['location']}", icon="🚨")
-
     stats = get_statistics()
-
-    if not locations:
-        st.error("❌ No se pueden cargar los datos. Verifica que el servidor FastAPI esté ejecutándose.")
-        st.info("💡 Ejecuta: `python api_server.py` en otra terminal")
-        return
     
     # Métricas principales
     col1, col2, col3, col4 = st.columns(4)
@@ -197,6 +186,11 @@ def main_dashboard():
     
     # Crear DataFrame para el mapa
     if locations:
+        # Alertas de detección
+        for r in locations:
+            if r['total_detections'] > 0:
+                st.error(f"ALERTA!! AEDES DETECTADO EN {r['location']}", icon="🚨")
+                
         df_locations = pd.DataFrame(locations)
         
         # Centro del mapa (Huánuco)
