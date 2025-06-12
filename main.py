@@ -200,7 +200,7 @@ def main_dashboard():
         # Crear mapa con Folium
         m = folium.Map(
             location=[center_lat, center_lon],
-            zoom_start=13,
+            zoom_start=0,
             tiles=map_style
         )
         
