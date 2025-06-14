@@ -300,7 +300,6 @@ def main_dashboard():
                                 <div class="raspberry-card">
                                     <h5>📅 {img_data['timestamp'][:16]}</h5>
                                     <span class="detection-badge">🎯 {img_data['detection_count']} detecciones</span>
-                                    <p><strong>Confianza:</strong> {img_data['confidence']:.2f}</p>
                                     <p><strong>Temp:</strong> {img_data['temperature']:.1f}°C | <strong>Humedad:</strong> {img_data['humidity']:.1f}%</p>
                                 </div>
                                 """, unsafe_allow_html=True)
